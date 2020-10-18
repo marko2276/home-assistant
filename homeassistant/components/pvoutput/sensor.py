@@ -1,22 +1,22 @@
 """Support for getting collected information from PVOutput."""
-import logging
 from collections import namedtuple
 from datetime import timedelta
+import logging
 
 import voluptuous as vol
 
-import homeassistant.helpers.config_validation as cv
-from homeassistant.helpers.entity import Entity
+from homeassistant.components.rest.data import RestData
 from homeassistant.components.sensor import PLATFORM_SCHEMA
-from homeassistant.components.rest.sensor import RestData
 from homeassistant.const import (
-    ATTR_TEMPERATURE,
-    CONF_API_KEY,
-    CONF_NAME,
     ATTR_DATE,
+    ATTR_TEMPERATURE,
     ATTR_TIME,
     ATTR_VOLTAGE,
+    CONF_API_KEY,
+    CONF_NAME,
 )
+import homeassistant.helpers.config_validation as cv
+from homeassistant.helpers.entity import Entity
 
 _LOGGER = logging.getLogger(__name__)
 _ENDPOINT = "http://pvoutput.org/service/r2/getstatus.jsp"
@@ -43,7 +43,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
 )
 
 
-def setup_platform(hass, config, add_entities, discovery_info=None):
+async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
     """Set up the PVOutput sensor."""
     name = config.get(CONF_NAME)
     api_key = config.get(CONF_API_KEY)
@@ -54,13 +54,13 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     headers = {"X-Pvoutput-Apikey": api_key, "X-Pvoutput-SystemId": system_id}
 
     rest = RestData(method, _ENDPOINT, auth, headers, payload, verify_ssl)
-    rest.update()
+    await rest.async_update()
 
     if rest.data is None:
         _LOGGER.error("Unable to fetch data from PVOutput")
         return False
 
-    add_entities([PvoutputSensor(rest, name)], True)
+    async_add_entities([PvoutputSensor(rest, name)], True)
 
 
 class PvoutputSensor(Entity):
@@ -112,11 +112,15 @@ class PvoutputSensor(Entity):
                 ATTR_VOLTAGE: self.pvcoutput.voltage,
             }
 
-    def update(self):
+    async def async_update(self):
         """Get the latest data from the PVOutput API and updates the state."""
         try:
-            self.rest.update()
+            await self.rest.async_update()
             self.pvcoutput = self.status._make(self.rest.data.split(","))
         except TypeError:
             self.pvcoutput = None
             _LOGGER.error("Unable to fetch data from PVOutput. %s", self.rest.data)
+
+    async def async_will_remove_from_hass(self):
+        """Shutdown the session."""
+        await self.rest.async_remove()

@@ -3,9 +3,10 @@ import asyncio
 from unittest.mock import Mock, patch
 
 from homeassistant import data_entry_flow
+from homeassistant.components.nest import DOMAIN, config_flow
 from homeassistant.setup import async_setup_component
-from homeassistant.components.nest import config_flow, DOMAIN
 
+from tests.async_mock import AsyncMock
 from tests.common import mock_coro
 
 
@@ -16,10 +17,10 @@ async def test_abort_if_no_implementation_registered(hass):
     result = await flow.async_step_init()
 
     assert result["type"] == data_entry_flow.RESULT_TYPE_ABORT
-    assert result["reason"] == "no_flows"
+    assert result["reason"] == "missing_configuration"
 
 
-async def test_abort_if_already_setup(hass):
+async def test_abort_if_single_instance_allowed(hass):
     """Test we abort if Nest is already setup."""
     flow = config_flow.NestFlowHandler()
     flow.hass = hass
@@ -28,13 +29,13 @@ async def test_abort_if_already_setup(hass):
         result = await flow.async_step_init()
 
     assert result["type"] == data_entry_flow.RESULT_TYPE_ABORT
-    assert result["reason"] == "already_setup"
+    assert result["reason"] == "single_instance_allowed"
 
 
 async def test_full_flow_implementation(hass):
     """Test registering an implementation and finishing flow works."""
-    gen_authorize_url = Mock(return_value=mock_coro("https://example.com"))
-    convert_code = Mock(return_value=mock_coro({"access_token": "yoo"}))
+    gen_authorize_url = AsyncMock(return_value="https://example.com")
+    convert_code = AsyncMock(return_value={"access_token": "yoo"})
     config_flow.register_flow_implementation(
         hass, "test", "Test", gen_authorize_url, convert_code
     )
@@ -62,7 +63,7 @@ async def test_full_flow_implementation(hass):
 
 async def test_not_pick_implementation_if_only_one(hass):
     """Test we allow picking implementation if we have two."""
-    gen_authorize_url = Mock(return_value=mock_coro("https://example.com"))
+    gen_authorize_url = AsyncMock(return_value="https://example.com")
     config_flow.register_flow_implementation(
         hass, "test", "Test", gen_authorize_url, None
     )
@@ -104,7 +105,7 @@ async def test_abort_if_exception_generating_auth_url(hass):
 
 async def test_verify_code_timeout(hass):
     """Test verify code timing out."""
-    gen_authorize_url = Mock(return_value=mock_coro("https://example.com"))
+    gen_authorize_url = AsyncMock(return_value="https://example.com")
     convert_code = Mock(side_effect=asyncio.TimeoutError)
     config_flow.register_flow_implementation(
         hass, "test", "Test", gen_authorize_url, convert_code
@@ -124,7 +125,7 @@ async def test_verify_code_timeout(hass):
 
 async def test_verify_code_invalid(hass):
     """Test verify code invalid."""
-    gen_authorize_url = Mock(return_value=mock_coro("https://example.com"))
+    gen_authorize_url = AsyncMock(return_value="https://example.com")
     convert_code = Mock(side_effect=config_flow.CodeInvalid)
     config_flow.register_flow_implementation(
         hass, "test", "Test", gen_authorize_url, convert_code
@@ -139,12 +140,12 @@ async def test_verify_code_invalid(hass):
     result = await flow.async_step_link({"code": "123ABC"})
     assert result["type"] == data_entry_flow.RESULT_TYPE_FORM
     assert result["step_id"] == "link"
-    assert result["errors"] == {"code": "invalid_code"}
+    assert result["errors"] == {"code": "invalid_pin"}
 
 
 async def test_verify_code_unknown_error(hass):
     """Test verify code unknown error."""
-    gen_authorize_url = Mock(return_value=mock_coro("https://example.com"))
+    gen_authorize_url = AsyncMock(return_value="https://example.com")
     convert_code = Mock(side_effect=config_flow.NestAuthError)
     config_flow.register_flow_implementation(
         hass, "test", "Test", gen_authorize_url, convert_code
@@ -164,7 +165,7 @@ async def test_verify_code_unknown_error(hass):
 
 async def test_verify_code_exception(hass):
     """Test verify code blows up."""
-    gen_authorize_url = Mock(return_value=mock_coro("https://example.com"))
+    gen_authorize_url = AsyncMock(return_value="https://example.com")
     convert_code = Mock(side_effect=ValueError)
     config_flow.register_flow_implementation(
         hass, "test", "Test", gen_authorize_url, convert_code

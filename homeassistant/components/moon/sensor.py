@@ -1,6 +1,4 @@
 """Support for tracking the moon phases."""
-import logging
-
 from astral import Astral
 import voluptuous as vol
 
@@ -9,8 +7,6 @@ from homeassistant.const import CONF_NAME
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.entity import Entity
 import homeassistant.util.dt as dt_util
-
-_LOGGER = logging.getLogger(__name__)
 
 DEFAULT_NAME = "Moon"
 
@@ -56,8 +52,13 @@ class MoonSensor(Entity):
 
     @property
     def name(self):
-        """Return the name of the device."""
+        """Return the name of the entity."""
         return self._name
+
+    @property
+    def device_class(self):
+        """Return the device class of the entity."""
+        return "moon__phase"
 
     @property
     def state(self):
@@ -81,7 +82,7 @@ class MoonSensor(Entity):
     @property
     def icon(self):
         """Icon to use in the frontend, if any."""
-        return MOON_ICONS.get(self.state, "mdi:brightness-3")
+        return MOON_ICONS.get(self.state)
 
     async def async_update(self):
         """Get the time and updates the states."""

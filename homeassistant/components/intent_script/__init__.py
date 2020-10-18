@@ -1,10 +1,9 @@
 """Handle intents with scripts."""
 import copy
-import logging
 
 import voluptuous as vol
 
-from homeassistant.helpers import intent, template, script, config_validation as cv
+from homeassistant.helpers import config_validation as cv, intent, script, template
 
 DOMAIN = "intent_script"
 
@@ -44,8 +43,6 @@ CONFIG_SCHEMA = vol.Schema(
     extra=vol.ALLOW_EXTRA,
 )
 
-_LOGGER = logging.getLogger(__name__)
-
 
 async def async_setup(hass, config):
     """Activate Alexa component."""
@@ -55,7 +52,7 @@ async def async_setup(hass, config):
     for intent_type, conf in intents.items():
         if CONF_ACTION in conf:
             conf[CONF_ACTION] = script.Script(
-                hass, conf[CONF_ACTION], f"Intent Script {intent_type}"
+                hass, conf[CONF_ACTION], f"Intent Script {intent_type}", DOMAIN
             )
         intent.async_register(hass, ScriptIntentHandler(intent_type, conf))
 
@@ -80,9 +77,11 @@ class ScriptIntentHandler(intent.IntentHandler):
 
         if action is not None:
             if is_async_action:
-                intent_obj.hass.async_create_task(action.async_run(slots))
+                intent_obj.hass.async_create_task(
+                    action.async_run(slots, intent_obj.context)
+                )
             else:
-                await action.async_run(slots)
+                await action.async_run(slots, intent_obj.context)
 
         response = intent_obj.create_response()
 

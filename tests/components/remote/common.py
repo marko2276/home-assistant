@@ -7,20 +7,27 @@ from homeassistant.components.remote import (
     ATTR_ACTIVITY,
     ATTR_ALTERNATIVE,
     ATTR_COMMAND,
+    ATTR_COMMAND_TYPE,
     ATTR_DELAY_SECS,
     ATTR_DEVICE,
     ATTR_NUM_REPEATS,
     ATTR_TIMEOUT,
     DOMAIN,
+    SERVICE_DELETE_COMMAND,
     SERVICE_LEARN_COMMAND,
     SERVICE_SEND_COMMAND,
 )
-from homeassistant.const import ATTR_ENTITY_ID, SERVICE_TURN_OFF, SERVICE_TURN_ON
+from homeassistant.const import (
+    ATTR_ENTITY_ID,
+    ENTITY_MATCH_ALL,
+    SERVICE_TURN_OFF,
+    SERVICE_TURN_ON,
+)
 from homeassistant.loader import bind_hass
 
 
 @bind_hass
-def turn_on(hass, activity=None, entity_id=None):
+def turn_on(hass, activity=None, entity_id=ENTITY_MATCH_ALL):
     """Turn all or specified remote on."""
     data = {
         key: value
@@ -31,7 +38,7 @@ def turn_on(hass, activity=None, entity_id=None):
 
 
 @bind_hass
-def turn_off(hass, activity=None, entity_id=None):
+def turn_off(hass, activity=None, entity_id=ENTITY_MATCH_ALL):
     """Turn all or specified remote off."""
     data = {}
     if activity:
@@ -45,7 +52,12 @@ def turn_off(hass, activity=None, entity_id=None):
 
 @bind_hass
 def send_command(
-    hass, command, entity_id=None, device=None, num_repeats=None, delay_secs=None
+    hass,
+    command,
+    entity_id=ENTITY_MATCH_ALL,
+    device=None,
+    num_repeats=None,
+    delay_secs=None,
 ):
     """Send a command to a device."""
     data = {ATTR_COMMAND: command}
@@ -66,7 +78,13 @@ def send_command(
 
 @bind_hass
 def learn_command(
-    hass, entity_id=None, device=None, command=None, alternative=None, timeout=None
+    hass,
+    entity_id=ENTITY_MATCH_ALL,
+    device=None,
+    command=None,
+    alternative=None,
+    command_type=None,
+    timeout=None,
 ):
     """Learn a command from a device."""
     data = {}
@@ -79,6 +97,9 @@ def learn_command(
     if command:
         data[ATTR_COMMAND] = command
 
+    if command_type:
+        data[ATTR_COMMAND_TYPE] = command_type
+
     if alternative:
         data[ATTR_ALTERNATIVE] = alternative
 
@@ -86,3 +107,24 @@ def learn_command(
         data[ATTR_TIMEOUT] = timeout
 
     hass.services.call(DOMAIN, SERVICE_LEARN_COMMAND, data)
+
+
+@bind_hass
+def delete_command(
+    hass,
+    entity_id=ENTITY_MATCH_ALL,
+    device=None,
+    command=None,
+):
+    """Delete commands from the database."""
+    data = {}
+    if entity_id:
+        data[ATTR_ENTITY_ID] = entity_id
+
+    if device:
+        data[ATTR_DEVICE] = device
+
+    if command:
+        data[ATTR_COMMAND] = command
+
+    hass.services.call(DOMAIN, SERVICE_DELETE_COMMAND, data)
