@@ -6,7 +6,7 @@ import pyiss
 import requests
 import voluptuous as vol
 
-from homeassistant.components.binary_sensor import PLATFORM_SCHEMA, BinarySensorDevice
+from homeassistant.components.binary_sensor import PLATFORM_SCHEMA, BinarySensorEntity
 from homeassistant.const import (
     ATTR_LATITUDE,
     ATTR_LONGITUDE,
@@ -53,7 +53,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     add_entities([IssBinarySensor(iss_data, name, show_on_map)], True)
 
 
-class IssBinarySensor(BinarySensorDevice):
+class IssBinarySensor(BinarySensorEntity):
     """Implementation of the ISS binary sensor."""
 
     def __init__(self, iss_data, name, show):
@@ -120,6 +120,6 @@ class IssData:
             self.next_rise = iss.next_rise(self.latitude, self.longitude)
             self.number_of_people_in_space = iss.number_of_people_in_space()
             self.position = iss.current_location()
-        except requests.exceptions.HTTPError as error:
-            _LOGGER.error(error)
+        except (requests.exceptions.HTTPError, requests.exceptions.ConnectionError):
+            _LOGGER.error("Unable to retrieve data")
             return False
